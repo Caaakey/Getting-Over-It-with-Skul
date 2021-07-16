@@ -9,8 +9,11 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Rigidbody2D m_Rigidbody;
     [SerializeField] private float m_MoveSpeed;
     [SerializeField] private float m_JumpSpeed;
+    [SerializeField] private UnityEngine.UI.Slider m_JumpSlider;
+    private float m_JumpPower = 0;
 
     public bool IsLeft { get; private set; } = false;
+    public bool IsLockMove { get; private set; } = false;
 
     private void FixedUpdate()
     {
@@ -25,20 +28,46 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-        if (!Input.GetKeyDown(KeyCode.Space)) return;
-        if (!m_PawnAnimation.Jump)
+        if (m_PawnAnimation.Jump) return;
+        if (Input.GetKey(KeyCode.Space))
+        {
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                if (!m_JumpSlider.gameObject.activeSelf) m_JumpSlider.gameObject.SetActive(true);
+            }
+
+            m_JumpPower += Time.deltaTime;
+            if (m_JumpPower >= 1f) m_JumpPower = 1f;
+
+            m_JumpSlider.value = m_JumpPower;
+            IsLockMove = true;
+
+            m_PawnAnimation.Move = false;
+            m_PawnAnimation.Attack = false;
+        }
+        else if (Input.GetKeyUp(KeyCode.Space) && m_JumpPower != 0f)
         {
             m_Rigidbody.velocity = Vector3.zero;
-            Vector3 axis = new Vector3(m_PawnAnimation.Move ? transform.right.x * 0.5f : 0, 1, 0);
+            bool isMove = Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.D);
+            Vector3 axis = new Vector3(isMove ? transform.right.x * 0.25f : 0, 1, 0);
 
-            m_Rigidbody.AddForce(axis * m_JumpSpeed, ForceMode2D.Impulse);
+            if (m_JumpPower != 0f)
+            {
+                m_JumpPower += 1f;
+                m_Rigidbody.AddForce(axis * m_JumpSpeed * m_JumpPower, ForceMode2D.Impulse);
+                m_PawnAnimation.Jump = true;
+            }
 
-            m_PawnAnimation.Jump = true;
+            m_JumpPower = 0;
+            IsLockMove = false;
+
+            m_JumpSlider.gameObject.SetActive(false);
         }
     }
 
     private void OnMove()
     {
+        if (IsLockMove) return;
         if (Input.GetKey(KeyCode.A))
         {
             if (!IsLeft) transform.Rotate(Vector3.up * 180f);
